@@ -31,7 +31,7 @@ Check these before funning
 """
 update = False  # Download all files even if they already exists
 
-publish = True # Wether to translate for local testing, or inputting to the intterwebs. Doesn't really do much,
+publish = False # Wether to translate for local testing, or inputting to the intterwebs. Doesn't really do much,
                 # maybe just check the end of file for manually changing few lines instead of full rerun.
 
 
@@ -41,7 +41,7 @@ publish = True # Wether to translate for local testing, or inputting to the intt
 # single string. Remove the first two "words", until the first '-H'
 evaste = (
 #        r"ex:copytexthere"
-r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit/matematiikka/geometria' -H 'Cookie: session=.eJyNjsEOgjAQRP-lZwyCoMDFT2m27RQbaEvKogfjv1tiYuLNw2Z3srsz7ynkguQpILAYOG0oBAV9i0kMQhRCk4e0Kfosy7vDo2TaSo5uRTjQysjNEyM5otlxucDQGEfnpom-IvwcXXfbNVnJcULIvm1lTm1vDCzBola6otpc0CpluqZvqrNSTWftMf_NOVKaqP-k2edcH5oR0YPzagfYViTpjBi6qqlfb3P4W9A.XTlsHQ.LItSXpRXrfuJBCn-WqQSG26Znko; _ga=GA1.2.1762882191.1563259360; XSRF-TOKEN=IjUxZDM1OWRkZWZhZWZlMmJjMWEyZDdlNWJiZDg0OTQxNmJiNDhmZjAi.XTlsHQ.SFoZMoxv-YEJVYNn4lQtUiSg2u8' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1'"
+r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit' -H 'Cookie: session=.eJyNTksOwiAQvcusa5BKte3Go5ABhkpaoAGqC-PdpS5M3LmYvHnJ-z1BrpQ8BgoFxpI2agCDvsUEI0ADGj1Jm6KvlN0dPVjBjZXoMoUD5kIVPBZKDnFxha1kcIqTc_OMXxJ-RNc9NicrS5wp1NyOm1M3GEMWyVKrNMfWXKhTyvRiEPyslOitPVbfUiulifrPNftf77Nmr90yJekMjD0X7esN3kpX5A.XUfqOg.dIKzxvdhPPtTOKZQFvD4uuNlFaY; _ga=GA1.2.1762882191.1563259360; XSRF-TOKEN=IjUxZDM1OWRkZWZhZWZlMmJjMWEyZDdlNWJiZDg0OTQxNmJiNDhmZjAi.XUfqOg.ELoU-0D5cv1QC2M3J_F4jXnzEvI' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1' -H 'Cache-Control: max-age=0'"
 )
 
 """
@@ -294,7 +294,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
     found_script = re.findall(r"javascript: \|!!\n(.*)\n!!", lines, re.DOTALL)
     test_script = ""
     par_script = "'{"
-    found_id = re.search('material_id: *"(.+)"', lines)
+    found_id = re.search('material_id: *(".+")', lines)
     if found_id:
         material_id = found_id.group(1)
         par_script += f'"material_id" : {material_id}, '
@@ -334,7 +334,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
 
     if not test_script:
         plug = (
-            f'<div id="{ex_name}">Geogebra App</div>\n'
+            f'<div id="{ex_name}"> </div>\n'
             '<script>\n'
             f'    var ggbApp = new GGBApplet({par_script}, true);\n'
             '    window.addEventListener("load", function() {\n'
@@ -342,7 +342,10 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
             '    });\n'
             '</script>\n'
         )
-        return plug
+
+        plugin_lib[ex_name] = plug
+
+        return f"PLUGIN_INSERT({ex_name})\n"
 
     os.makedirs(f"../exercises/{ex_name}", exist_ok=True)
 
@@ -1168,13 +1171,13 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
                 modulen = re.sub("[/:.,]", "-", modulen)
                 break
 
-        line = clean_line(src.readline(), src)
+#        line = clean_line(src.readline(), src)
 
-        while line and not line.startswith("##"):
+#        while line and not line.startswith("##"):
 
-            intro += line
+#            intro += line
 
-            line = clean_line(src.readline(), src)
+#            line = clean_line(src.readline(), src)
 
         while line:
 
@@ -1316,13 +1319,13 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
                     addmodulen = re.sub("[/:.,]", "-", addmodulen)
                     break
 
-            line = clean_line(src.readline(), src)
+#            line = clean_line(src.readline(), src)
 
-            while line and not line.startswith("##"):
+#            while line and not line.startswith("##"):
 
-                addintro += line
+#                addintro += line
 
-                line = clean_line(src.readline(),src)
+#                line = clean_line(src.readline(),src)
 
             while line:
 
