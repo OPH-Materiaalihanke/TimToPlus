@@ -331,10 +331,6 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
         commands = f"\"{commands}\""
         # commands config-yamlin cmd kohtaan
 
-
-        # Jos plugini on rakennettu komennoilla, mutta ilman tarkistusta -> ei plussan tehtävä
-        # TODO komennot skriptille
-
     if not test_script:
         plug = (
             f'<div id="{ex_name}"> </div>\n'
@@ -596,6 +592,7 @@ if (require.main === module) {
     return f"PLUGIN_INSERT({ex_name})\n"
 
 
+#TODO acosista löytynee parempi vaihtoehto
 """Create multiplequestions questionnaire, and save it to be inserted later"""
 def create_mcq(lines):
 
@@ -871,9 +868,11 @@ def clean_line(line, src):
                                                 #but confuse pandoc
         line = line.replace(' \\', '')
 
-    if re.search(r"\[.*\]\(https://tim.jyu.fi/view", line): #internal link #TODO
+    if re.search(r"\[.*?\]\(https://tim\.jyu\.fi/view", line): #link to other file in TIM,
+        # we're not in TIM anymore, Toto
 
-        line = re.sub(f"{view_folder}", "..", line)
+        #TODO sisöinen linkki osoittamaan tiedostoon
+        line = re.sub(f"{view_folder}(.*?)\)", r"..\1/\1.rst", line)
 #        line = re.sub(r"\)$", ")", line)
 
     line = check_image(line)
@@ -989,6 +988,7 @@ def md_to_rst(fileName):
 The actual work begins
 """
 
+os.chdir("CourseData")
 
 """
 Install contentui packages
