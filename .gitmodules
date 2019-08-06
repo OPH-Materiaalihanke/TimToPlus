@@ -1,0 +1,3 @@
+[submodule "CourseData"]
+	path = CourseData
+	url = https://gitlab.tut.fi/laakson7/timtoplus-strippedaplus
