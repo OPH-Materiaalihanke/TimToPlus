@@ -27,7 +27,7 @@ import time
 
 
 """
-Check these before funning
+Check these before running
 """
 update = False  # Download all files even if they already exists
 
@@ -60,7 +60,7 @@ Helper functions
 
 plugin_lib = {}
 
-"""Function for translating markdown parts inside plugins, that otherwise wouldn't go through pandoc asis"""
+"""Function for translating markdown parts inside plugins, that otherwise wouldn't go through pandoc as-is"""
 def do_pandoc(txt, to="rst"):
 
     txt = check_image(txt)
@@ -89,7 +89,10 @@ def do_math(line):
     line = line.lstrip().rstrip()
 
     if re.match("^'.*'$", line):
-        return re.match("'(.*)'", line).group(1)
+        return line
+
+    if re.search(r"\(.*\)", line):
+        line = do_math(re.search(r"\((.*)\)", line).group(1))
 
     while re.search(r"[\d.]+\*[\d.]+", line):
         line = re.sub(r"([\d.]+)\*([\d.]+)", lambda mtch: str(float(mtch.group(1))*float(mtch.group(2))), line,1)
