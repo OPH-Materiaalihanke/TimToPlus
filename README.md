@@ -10,12 +10,8 @@ Käyttö:
 Aluksi
 ------
 
-*courseinfo-.py* sisältää kurssikohtaiset asetukset, jotka tulee asettaa jokaiselle 
-kurssille erikseen. Aloita kopioimalla tämä tiedosto, ja nimeä kopio samaksi, ilman 
-viimeiät väliviivaa. Näin asetukset eivät palaudu, vaikka projekti ladattaisiin 
-uudestaan.
-
-Nyt voit kirjoittaa asetukset valmiiksi. Tärkein osuus infoa on kurssiin kuuluvien
+*courseinfo.py* sisältää kurssikohtaiset asetukset, jotka tulee asettaa jokaiselle
+kurssille erikseen. Tärkein osuus infoa on kurssiin kuuluvien
 sivujen nimeäminen. Skripti käyttää tätä listaa lataamaan tiedostot tarvittaessa, 
 ja luo kansiorakenteet sen mukaan.
 
