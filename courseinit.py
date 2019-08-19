@@ -41,7 +41,7 @@ publish = False # Wether to translate for local testing, or inputting to the int
 # single string. Remove the first two "words", until the first '-H'
 evaste = (
 #        r"ex:copytexthere"
-r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit' -H 'Cookie: session=.eJyNTksOwiAQvcusa5BKte3Go5ABhkpaoAGqC-PdpS5M3LmYvHnJ-z1BrpQ8BgoFxpI2agCDvsUEI0ADGj1Jm6KvlN0dPVjBjZXoMoUD5kIVPBZKDnFxha1kcIqTc_OMXxJ-RNc9NicrS5wp1NyOm1M3GEMWyVKrNMfWXKhTyvRiEPyslOitPVbfUiulifrPNftf77Nmr90yJekMjD0X7esN3kpX5A.XUfqOg.dIKzxvdhPPtTOKZQFvD4uuNlFaY; _ga=GA1.2.1762882191.1563259360; XSRF-TOKEN=IjUxZDM1OWRkZWZhZWZlMmJjMWEyZDdlNWJiZDg0OTQxNmJiNDhmZjAi.XUfqOg.ELoU-0D5cv1QC2M3J_F4jXnzEvI' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1' -H 'Cache-Control: max-age=0'"
+r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit/matematiikka/geometria' -H 'Cookie: session=.eJyNjksOwjAMRO-SdVHpD0o3HCVykkmJ2iRV6sICcXdSISGxY2HZ48_4PYVckDwFBBYDpw2FoKBvMYlBiEJo8pA2RZ9leXd4lExbydGtCAdaGTl5YiRHNDsuFxga4-jcNNFXhJ-l6267Jis5TgjZt6tM012MgSVY1EpXVJszOqVM317a6qRU21t7zHdzfilN1H_S7HWOD82I6MF5lNvU7BTbiiSdEUNftfXrDUXFXWE.XVpzRA.qXW6Mi0Sruj6aGpGz8Gw9OFUbxg; _ga=GA1.2.1762882191.1563259360; XSRF-TOKEN=IjUxZDM1OWRkZWZhZWZlMmJjMWEyZDdlNWJiZDg0OTQxNmJiNDhmZjAi.XVpzRA.gJU9M6fYiQkzxc5D2UkjIXhAWU8' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1' -H 'Cache-Control: max-age=0'"
 )
 
 """
@@ -296,11 +296,21 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
 
     found_script = re.findall(r"javascript: \|!!\n(.*)\n!!", lines, re.DOTALL)
     test_script = ""
-    par_script = "'{"
+    par_script = "{"
     found_id = re.search('material_id: *(".+")', lines)
     if found_id:
         material_id = found_id.group(1)
         par_script += f'"material_id" : {material_id}, '
+
+    width = re.search('width:(.*)', lines)
+    if width:
+        par_script += f'"width":{width.group(1)}, '
+    height = re.search('height:(.*)', lines)
+    if height:
+        par_script += f'"height":{height.group(1)}, '
+    else:
+        height = re.match("(.*)","200")
+
 
     for scrpt in found_script:
         if scrpt.isspace():
@@ -321,7 +331,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
             par_script += f"\"{parnam}\" : {parval}, "
 
     par_script = par_script.rstrip(", ")
-    par_script += "}'" # par_scirpt config-yamlin par kohtaan tai ggscriptille
+    par_script += "}" # par_scirpt config-yamlin par kohtaan tai ggscriptille
 
     found_commands = re.search(r"commands: \|!!\n(.*?)\n!!", lines, re.DOTALL)
     commands = ""
@@ -333,18 +343,20 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
 
     if not test_script:
         plug = (
-            f'<div id="{ex_name}"> </div>\n'
+            f'<div id="{ex_name}" style="height:{height.group(1)}">Tuo hiiri tähän ladataksesi Geagebra Appin<hr></div>\n'
             '<script>\n'
-            f'    var ggbApp = new GGBApplet({par_script}, true);\n'
-            '    window.addEventListener("load", function() {\n'
-            f"        ggbApp.inject('{ex_name}');\n"
-            '    });\n'
+            f'    var para = document.getElementById("{ex_name}");\n'
+            '    para.addEventListener("mouseover", swap );\n'
+            '   function swap(){\n'
+            f'     var ggbApp = new GGBApplet({par_script}, true);\n'
+            f"     ggbApp.inject('{ex_name}');\n"
+            '     para.innerHTML = "";\n'
+            '     para.removeEventListener("mouseover", swap );\n'
+            '   }\n'
             '</script>\n'
         )
 
-        plugin_lib[ex_name] = plug
-
-        return f"PLUGIN_INSERT({ex_name})\n"
+        return plug
 
     os.makedirs(f"../exercises/{ex_name}", exist_ok=True)
 
@@ -399,7 +411,7 @@ grade
 """
 f'        var ggbFrame = document.getElementById("ggbFrame_{ex_name}");\n'
 f'        var cmd = {commands};\n'
-f'        var par = {par_script};\n'
+f"        var par = {'par_script'};\n"
 """        ggbFrame.contentWindow.postMessage(cmd+"\\n"+par, '*');
       };
       var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
