@@ -1,2 +1,4 @@
 !/coursein*
 /.idea
+__pycache__*
+CourseData

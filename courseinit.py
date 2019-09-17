@@ -320,7 +320,8 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
             funcnam = one[0].rstrip()
             funcval = one[1].lstrip()
             if funcnam == "getData":
-                test_script = funcval # Tämä muokkauksen kautta test.jssään?
+                test_script = funcval
+                test_script.replace("return","return_values =")
             else:
                 pass # Muita funktioita ei tarvittane, jos niitä on muita kuin setDataInit, joka kaiketi vain alustaa
 
@@ -337,25 +338,26 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
     commands = ""
     if found_commands:
         commands = found_commands.group(1)
-        commands = re.sub("\n", ";", commands)
-        commands = f"\"{commands}\""
+        commands = re.sub("\\n", " \\\\n ", commands)
+#        commands = f"\"{commands}\""
         # commands config-yamlin cmd kohtaan
 
-    if not test_script:
-        plug = (
-            f'<div id="{ex_name}" style="height:{height.group(1)}">Tuo hiiri tähän ladataksesi Geagebra Appin<hr></div>\n'
-            '<script>\n'
-            f'    var para = document.getElementById("{ex_name}");\n'
-            '    para.addEventListener("mouseover", swap );\n'
-            '   function swap(){\n'
-            f'     var ggbApp = new GGBApplet({par_script}, true);\n'
-            f"     ggbApp.inject('{ex_name}');\n"
-            '     para.innerHTML = "";\n'
-            '     para.removeEventListener("mouseover", swap );\n'
-            '   }\n'
-            '</script>\n'
-        )
+    plug = (
+        f'  <div id="ggbFrame_{ex_name}" style="height:{height.group(1)}">Tuo hiiri tähän ladataksesi Geagebra Appin<hr></div>\n'
+        '  <script>\n'
+        f'    var para = document.getElementById("ggbFrame_{ex_name}");\n'
+        '    para.addEventListener("mouseover", swap );\n'
+        '    function swap(){\n'
+        '      para.innerHTML = "";\n'
+        '      para.removeEventListener("mouseover", swap );\n'
+        f'      var ggbApp = new GGBApplet({par_script}, true);\n'
+        f'      ggbApp.evalCommand("{commands}");\n'
+        f"      ggbApp.inject('ggbFrame_{ex_name}');\n"
+        '    }\n'
+        '  </script>\n'
+    )
 
+    if not test_script:
         return plug
 
     os.makedirs(f"../exercises/{ex_name}", exist_ok=True)
@@ -375,7 +377,7 @@ cp /exercise/*.js .
 
 
 # cat v | capture nodejs tests.js $1
-#capture nodejs ../tests.js $1 $2 
+capture nodejs ../tests.js $1
 
 err-to-out
 grade
@@ -398,29 +400,19 @@ grade
     with open(f"../exercises/{ex_name}/config.yaml", 'w') as trgt:
         trgt.write( "---\n"
                     f"title: {ex_name}\n"
-                    "max_points: 1\n"
+                    "max_points: 2\n"
                     "instructions: |\n"
-                    "  <p> OHJEET TBA\n"
-                    '    <iframe src="/grader/static/santtufork/_static/child.html"\n'
-                    f'    id="ggbFrame_{ex_name}"'
+                    "  <p> OHJEET TBA </p>\n"
+                    +plug+
 """
-        onload="postMsg();" width="1000" height="600" frameborder="0"></iframe>
-    
     <script type="text/javascript">
-      function postMsg() {
-"""
-f'        var ggbFrame = document.getElementById("ggbFrame_{ex_name}");\n'
-f'        var cmd = {commands};\n'
-f"        var par = {'par_script'};\n"
-"""        ggbFrame.contentWindow.postMessage(cmd+"\\n"+par, '*');
-      };
-      var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
+"""f'        document.getElementById("{ex_name}_id").style.display = "none";\n'
+"""      var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
       var eventer = window[eventMethod];
       var messageEvent = eventMethod === "attachEvent" ? "onmessage" : "message";
       eventer(messageEvent, function (e) {
         var data = (typeof e.data) === "string" ? e.data : "";
 """
-f'        document.getElementById("{ex_name}_id").style.display = "none";\n'
 f'        document.getElementById("{ex_name}_id").value = data;\n'
 """      });
     </script>
@@ -437,15 +429,12 @@ container:
   image: apluslms/grade-nodejs:11-2.7
   mount: exercises/geogebra-example
 """
-f'  cmd: /exercise/run.sh {ex_name}'
+f'  cmd: /exercise/run.sh {ex_name}_id'
         )
 
 
-
-# tests.js kirjoitus näin alkuun, että edes jotain tapahtuu TODO tarkistuskoodi test_sciptistä
-    if not os.path.exists("../exercises/tests.js"):
-        with open(f"../exercises/tests.js", 'w') as trgt:
-            trgt.write(
+    with open(f"../exercises/tests.js", 'w') as trgt:
+        trgt.write(
 """"use strict";
 
 Object.size = function (obj) {
@@ -454,150 +443,37 @@ Object.size = function (obj) {
     return size;
 };
 
-function replaceAll(str, find, replace) {
-    if (str === undefined) return str;
-    if (str === "") return str;
-    return str.replace(new RegExp(find, 'g'), replace);
-}
-
-// the test function
-// checks studentInput (got from Geogebra) against teacherInput (got from run.sh).
-// teacherInput in JSON format, surrounded by single quotes - to keep it as one string
-// studentInput as similar commands as inserted to GeoGebra, separator is ";"
-// Each teacherInput grants one point if it matches - matching means str equivalence
-function testTeacherVsStudent(teacherInput, studentInput) {
-    var msg="";
-    Object.keys(studentInput).forEach(function (key) {
-        var value = studentInput[key];
-        msg = msg + key + "=" + value + ";";
-    });
-    msg = msg + "<br>";
-
-    var points = 0;
-    Object.keys(teacherInput).forEach(function (key) {
-        var value = teacherInput[key];
-
-        if (Array.isArray(value) ) {
-            // if two numbers given, the value must locate in the range
-            var studentValue = studentInput[key];
-            if (studentValue) {
-                try {
-                    studentValue = parseFloat(studentValue);
-                    if (parseFloat(value[0]) < studentValue < parseFloat(value[1])) {
-                        points++;
-                        msg += (studentValue + " OK<br>");
-                    }
-                }
-                catch (exp) { console.log(exp); }
-            }
-        }
-        else {
-            try {
-                var studentValue = studentInput[key];
-		if (studentValue) studentValue=studentValue.toString().trim().replace(" ","");
-                value = value.toString().trim();
-                if (value === studentValue) {
-                    points++;
-                    msg = msg + key + " &#128077;<br>";   //thumbs-up
-                }
-                else {
-                    msg = msg + key + " &#128078;<br>";  //thumbs-down
-                }
-            }
-            catch (exp) { console.log(exp); }
-        }
-    });
+function testMain(filename) {
+    
+"""f"{test_script}"
+"""
     return {
-        points:points, 
-        msg:msg
-    };
-}
-
-
-function getMap(str) {
-    var studentInput={}
-    if (str.length === 0) return {};
-    var commands = str.split(";");
-    for (var i = 0; i < commands.length; i++) {
-        var command = commands[i];
-        var parts = command.split(":");
-        if (parts.length < 2) parts = command.split("=");
-        var key = parts[0].trim();
-        var value = "";
-        if (parts.length > 1) {
-            value = parts[1].trim();
-        }
-        if (key === "") continue;
-        studentInput[key] = value;
-    }
-    return studentInput;
-}
-
-
-const testFunctions = [
-    testTeacherVsStudent
-];
-
-function testMain(teacherInput, studentInput) {
-    var points = 0;
-    var max_points = 0;
-    var msg = "";
-
-    for (var test of testFunctions) {
-        msg = msg + "Testing " + test.toString().split("\n")[0] + " ... <br>";
-        max_points += Object.size(teacherInput);
-        try {
-            var res = test(teacherInput, studentInput);
-            points = points + res.points;
-            msg = msg + res.msg;
-        } catch (exp) { console.log(exp); }
-    }
-
-    return {
-        points: points,
-        max_points: max_points,
-        msg: msg
+        points: return_values.points,
+        max_points: 2,  //ONKO NÄIN?
+        msg: return_values.message
     };
 }
 
 if (require.main === module) {
 
-    var teacherInput = {};
+    var filename;
     try {
-        // single quotes removed 
-        var input = replaceAll(process.argv[3], "'", "");
-        teacherInput = JSON.parse(input);
-    } catch (exp) {console.log(exp);}
+        filename = process.argv[2];
+    } catch (exp) { console.log(exp); return false; }
 
-    // first parameter must be a file name, defaults to "v".
-    // Yet multiple variables in the same page with the same name "v" 
-    // mandates to name variables differently.
-    // "v" is like "vastaus": a student input
-    var fileName = "v"; //student input, defaults to "v"    
-    try {
-        fileName = process.argv[2];
-    } catch (exp) { console.log(exp); }
-
-    // read "v" or fileName
-    var fs = require('fs');
-    fs.readFile(fileName, 'utf8', function (err, contents) {
-        var studentInput = getMap(contents);
-        var result = testMain(teacherInput, studentInput);
-        console.log(result.points+"/"+result.max_points+"<br>");
-        console.log(result.msg+"<br>");
-        console.error("TotalPoints: ", result.points);	    
-        console.error("MaxPoints: ", result.max_points);
-        console.error("filename: "+fileName);
-        //console.error(teacherInput);
-    if (result.points/result.max_points>0.5) console.error("Hienoa!");
-    else if (result.points/result.max_points==0.5) console.error("Lähellä!");
-    else console.error("Yritä vielä!");
+    var result = testMain(filename);
+    console.log(result.points+"/"+result.max_points+"<br>");
+    console.log(result.msg+"<br>");
+    console.error("TotalPoints: ", result.points);	    
+    console.error("MaxPoints: ", result.max_points);
+    console.error("filename: "+fileName);
+    //console.error(teacherInput);
+    console.error(result.message);
         
-    });
     return true;
 
 }"""
-            )
+        )
 
     plugin_lib[ex_name]=f".. submit:: geogebra_{ex_name} 1\n  :config: exercises/{ex_name}/config.yaml\n  \n"
 
