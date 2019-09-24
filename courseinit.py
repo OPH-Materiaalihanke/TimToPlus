@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 from courseinfo import *
+from constructs import *
 
 import time
 
@@ -44,15 +45,6 @@ evaste = (
 r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit/matematiikka/geometria' -H 'Cookie: session=.eJyNjksOwjAMRO-SdVHpD0o3HCVykkmJ2iRV6sICcXdSISGxY2HZ48_4PYVckDwFBBYDpw2FoKBvMYlBiEJo8pA2RZ9leXd4lExbydGtCAdaGTl5YiRHNDsuFxga4-jcNNFXhJ-l6267Jis5TgjZt6tM012MgSVY1EpXVJszOqVM317a6qRU21t7zHdzfilN1H_S7HWOD82I6MF5lNvU7BTbiiSdEUNftfXrDUXFXWE.XVpzRA.qXW6Mi0Sruj6aGpGz8Gw9OFUbxg; _ga=GA1.2.1762882191.1563259360; XSRF-TOKEN=IjUxZDM1OWRkZWZhZWZlMmJjMWEyZDdlNWJiZDg0OTQxNmJiNDhmZjAi.XVpzRA.gJU9M6fYiQkzxc5D2UkjIXhAWU8' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1' -H 'Cache-Control: max-age=0'"
 )
 
-"""
-Translatable parts
-"""
-
-def showhide():
-    ret = "Show/Hide"
-    if lang()=="fi":
-        ret = "Näytä/Piilota"
-    return  ret
 
 """
 Helper functions
@@ -110,7 +102,7 @@ def do_math(line):
 
 exercise_names = []
 
-"""Create a mathcheck question with all neccessary files."""
+"""Create a mathcheck question"""
 def create_mathcheck(lines):
 
     global exercise_names
@@ -164,50 +156,7 @@ def create_mathcheck(lines):
         trgt.write(teach_input)
 
     with open(f"../exercises/{ex_name}/run.sh", 'w') as trgt:
-        trgt.write(
-"""#!/bin/bash
-
-export PYTHONPATH=/submission/user
-
-cat /exercise/teacher-input.txt ratkaisu > mc_input
-
-sed -i 's/&gt;/>/g' mc_input
-sed -i 's/&lt;/</g' mc_input
-
-cat mc_input | mathcheck.out > mc_output
-
-capture mathcheck.out < mc_input # in /usr/local/bin
-
-# annetaan pisteitä sen mukaan, oliko mc tyytyväinen
-# huomaa, että plussa skaalaa pisteet. jos plussassa tehtävän maksimipisteiksi on
-# merkitty 50 ja tässä annetaan 1/2, opiskelija saa 25 pst. jos tässä annetaan 2/3,
-# opiskelija saa 33 pst jne.
-
-if grep -q "\!points\! 1" mc_output;
-then
-
-  echo "2/2" > /feedback/points
-  echo '<br><br><div class="alert alert-success">Jipii, oikein meni! :)</div>' >> /feedback/out
-
-elif grep -q "class=warn" mc_output;
-then
-
-  echo "1/2" > /feedback/points
-  echo '<br><br><div class="alert alert-warning">Annoit turhan hankalan vastauksen! Voi vipstaakki! Voisikohan vastauksen esittää sievemmin?</div>' >> /feedback/out
-
-else
-
-  echo "0/2" > /feedback/points
-  echo '<br><br><div class="alert alert-danger">Sait nolla pistettä. Yritä uudelleen.</div>' >> /feedback/out
-
-fi
-
-
-err-to-out
-grade
-
-"""
-        )
+        trgt.write(MC_RUN())
 
     instructions = ""
     if re.search("stem: '.*'",lines, re.DOTALL):
@@ -225,29 +174,14 @@ grade
                     "max_points: 1\n"
                     "instructions: |\n"
                     f"{instructions}"
-"""view_type: access.types.stdasync.acceptPost 
-fields: # näiden täytyy olla valideja HTML-formien attribuutteja
-  - name: ratkaisu # Lomakkeen nimi verkkosivulla
-    title: Ratkaisu # Näkyy syötekentän yläpuolella
-    required: True
-
-# configuration for the new Docker container grading sandbox
-container:
-  image: sesodesa/grade-mathcheck:2019-04-22
-  mount: exercises/mathcheck-example
-  cmd: /exercise/run.sh
-"""
-        )
+                    f"{MC_CONF()}")
 
     plugin_lib[ex_name]=f".. submit:: mathcheck_{ex_name} 1\n  :config: exercises/{ex_name}/config.yaml\n  \n"
 
     return f"PLUGIN_INSERT({ex_name})\n"
 
 
-
-
-
-"""Create a geogebra plugin with all neccessary files."""
+"""Create a geogebra plugin"""
 def create_geogebra(lines): # UNDER CONSTRUCTION
 
     global exercise_names
@@ -363,26 +297,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
     os.makedirs(f"../exercises/{ex_name}", exist_ok=True)
 
     with open(f"../exercises/{ex_name}/run.sh", 'w') as trgt:
-        trgt.write(
-"""#!/bin/bash
-
-# The uploaded user files are always in /submission/user
-# and named identically to config.yaml regardless of the uploaded file names.
-
-# The mount directory from config.yaml is in /exercise.
-# Append the required support files to test user solution.
-cp /exercise/*.js .
-
-# "capture" etc description in https://github.com/apluslms/grading-base
-
-
-# cat v | capture nodejs tests.js $1
-capture nodejs ../tests.js $1
-
-err-to-out
-grade
-"""
-        )
+        trgt.write(GG_RUN())
 
     instructions = ""
     if re.search("stem: '.*'",lines, re.DOTALL):
@@ -394,86 +309,19 @@ grade
         for inst in instruct_list:
             instructions += f"  {inst}\n"
     # Mikäli stem kohtaa ei ole, poimittaneen kaikki teksti tähän edellisen "Tehtävä"otsikon alusta...
-    # Tähän hätään jätetään kokoanna käyttämättä, jotta kokeiluyaml rakentuu varmasti oikein
-
 
     with open(f"../exercises/{ex_name}/config.yaml", 'w') as trgt:
         trgt.write( "---\n"
                     f"title: {ex_name}\n"
                     "max_points: 2\n"
                     "instructions: |\n"
-                    "  <p> OHJEET TBA </p>\n"
-                    +plug+
-"""
-    <script type="text/javascript">
-"""f'        document.getElementById("{ex_name}_id").style.display = "none";\n'
-"""      var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
-      var eventer = window[eventMethod];
-      var messageEvent = eventMethod === "attachEvent" ? "onmessage" : "message";
-      eventer(messageEvent, function (e) {
-        var data = (typeof e.data) === "string" ? e.data : "";
-"""
-f'        document.getElementById("{ex_name}_id").value = data;\n'
-"""      });
-    </script>
-  </p>
-# acceptPost tuottaa tekstikentän sivulle
-# tiedoston palautuslomakkeen sijaan
-view_type: access.types.stdasync.acceptPost 
-fields: # näiden täytyy olla valideja HTML-formien attribuutteja
-"""
-f'  - name: {ex_name} # Lomakkeen nimi verkkosivulla, täytyy olla yksikäsitteinen ja sopia yhteen v_id:n kanssa (ks.yllä, kahdessa kohtaa ja alla run.sh:n jälkeen)\n'
-"""    required: True
-
-container:
-  image: apluslms/grade-nodejs:11-2.7
-  mount: exercises/geogebra-example
-"""
-f'  cmd: /exercise/run.sh {ex_name}_id'
-        )
+                    f"  <p> {instructions} </p>\n"
+                    f"{plug}"
+                    f"{GG_CONF(ex_name)}")
 
 
     with open(f"../exercises/tests.js", 'w') as trgt:
-        trgt.write(
-""""use strict";
-
-Object.size = function (obj) {
-    var size = 0;
-    for (var key in obj) if (obj.hasOwnProperty(key)) size++;
-    return size;
-};
-
-function testMain(filename) {
-    
-"""f"{test_script}"
-"""
-    return {
-        points: return_values.points,
-        max_points: 2,  //ONKO NÄIN?
-        msg: return_values.message
-    };
-}
-
-if (require.main === module) {
-
-    var filename;
-    try {
-        filename = process.argv[2];
-    } catch (exp) { console.log(exp); return false; }
-
-    var result = testMain(filename);
-    console.log(result.points+"/"+result.max_points+"<br>");
-    console.log(result.msg+"<br>");
-    console.error("TotalPoints: ", result.points);	    
-    console.error("MaxPoints: ", result.max_points);
-    console.error("filename: "+fileName);
-    //console.error(teacherInput);
-    console.error(result.message);
-        
-    return true;
-
-}"""
-        )
+        trgt.write(GG_TEST(test_script))
 
     plugin_lib[ex_name]=f".. submit:: geogebra_{ex_name} 1\n  :config: exercises/{ex_name}/config.yaml\n  \n"
 
@@ -481,7 +329,7 @@ if (require.main === module) {
 
 
 #TODO acosista löytynee parempi vaihtoehto
-"""Create multiplequestions questionnaire, and save it to be inserted later"""
+"""Create multiplequestions questionnaire"""
 def create_mcq(lines):
 
     global exercise_names
@@ -878,76 +726,8 @@ The actual work begins
 
 os.chdir("CourseData")
 
-"""
-Install contentui packages
-"""
-if not os.path.exists("./extensions/sphinxcontrib"):
-    os.system(f"pip3 install -t {os.getcwd()}/extensions sphinxcontrib-contentui")
+DEP_contentui()
 
-if not os.path.exists("extensions/sphinxcontrib/contentui_orig.css"):
-    shutil.copyfile("extensions/sphinxcontrib/contentui.css", "extensions/sphinxcontrib/contentui_orig.css")
-
-print("Updating contentui.css")
-
-shutil.copyfile("extensions/sphinxcontrib/contentui_orig.css", "extensions/sphinxcontrib/contentui.css")
-
-with open("extensions/sphinxcontrib/contentui_orig.css", 'r') as src:
-
-    with open("extensions/sphinxcontrib/contentui.css", 'w') as trgt:
-
-        line = src.readline()
-
-        while line:
-            lineblock = ""
-
-            while not line.startswith("."):
-                trgt.write(line)
-                line = src.readline()
-
-            while not line.startswith("}"):
-                lineblock += line
-
-                if line.endswith("}\n"):
-                    break
-
-                line = src.readline()
-
-            if lineblock.startswith(".toggle-header {"):
-                lineblock =""".toggle-header {
-    display: inline-block;
-    clear: both;
-    cursor: pointer;
-    font-size: 1.17em;
-    margin-top: 1em;
-    margin-bottom: 1em;
-    margin-left: 0;
-    margin-right: 0;
-    font-weight: bold;
-}
-"""
-
-
-            elif lineblock.startswith(".toggle-header:after {"):
-                lineblock =""".toggle-header:after {
-    display: inline;
-    content: " ▼";
-}
-"""
-
-            elif lineblock.startswith(".toggle-header.open:after {"):
-               lineblock = """.toggle-header.open:after {
-    display: inline;
-    content: " ▲";
-}
-"""
-            if not lineblock.endswith("}\n"):
-                lineblock += "}\n"
-            trgt.write(lineblock)
-            line = src.readline()
-
-"""
-Create main index, and while at it download course .mds if neccessary
-"""
 
 if update and os.path.exists("Source"):
     shutil.rmtree("Source")
@@ -1011,8 +791,6 @@ with open("./index.rst", 'w') as trgt:
                         print(f"{add_con_nm} file exist, no need to download")
         addtxtDirEntries.append(add_in_entries)
 
-latex_preambles = []
-
 """
 Reading the source md files
 """
@@ -1024,6 +802,7 @@ if len(txtDirEntries) == 0:
 print("Modifying files. Pandoc may work slowly for big files, so this might take some time")
 
 chapterdict = dict()
+
 
 for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
@@ -1042,10 +821,10 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
         if line.startswith(r"```") and re.search("settings=", line):
             line = src.readline()
             while not (line.startswith(r"```")):
-                if line.startswith("math_preamble:"):
-                    preamble = line.replace("math_preamble: ", "").rstrip()
-                    if preamble and not latex_preambles.count(preamble):
-                        latex_preambles.append(preamble)
+                #if line.startswith("math_preamble:"):
+                #    preamble = line.replace("math_preamble: ", "").rstrip()
+                #    if preamble and not latex_preambles.count(preamble):
+                #        latex_preambles.append(preamble)
                 line = src.readline()
 
         else:
@@ -1186,10 +965,10 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
             if line.startswith(r"```") and re.search("settings=", line):
                 line = src.readline()
                 while not (line.startswith(r"```")):
-                    if line.startswith("math_preamble:"):
-                        preamble = line.replace("math_preamble: ", "").rstrip()
-                        if preamble and not latex_preambles.count(preamble):
-                            latex_preambles.append(preamble)
+                    #if line.startswith("math_preamble:"):
+                    #    preamble = line.replace("math_preamble: ", "").rstrip()
+                    #    if preamble and not latex_preambles.count(preamble):
+                    #        latex_preambles.append(preamble)
                     line = src.readline()
 
             else:
@@ -1292,115 +1071,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
 os.chdir("..")
 
-print("Updating conf.py")
-if not os.path.exists("conf_orig.py"):
-    shutil.copyfile("conf.py", "conf_orig.py")
-    shutil.copymode("conf.py", "conf_orig.py")
-
-with open("conf_orig.py", 'r') as src:
-
-    with open("conf.py", 'w') as trgt:
-
-        line = src.readline()
-
-        latex_preamble = ""
-
-        if latex_preambles:
-            latex_preamble = "\t'preamble':"
-            for s in latex_preambles:
-                latex_preamble += f"\n\t\t{s}"
-
-        while line:
-
-            line = re.sub(r"(extensions = \[)", f"\\1\n\t'sphinxcontrib.contentui',", line)
-
-            line = re.sub(r"(exclude_patterns =.*?)(?:, 'Source')?\]", f"\\1, 'Source']",line)
-
-            line = re.sub(r"(course_open_date =).*", f"\\1 '{course_open()}'",line)
-            line = re.sub(r"(course_close_date =).*", f"\\1 '{course_close()}'",line)
-            line = re.sub(r"(project =).*", f"\\1 '{project()}'",line)
-            line = re.sub(r"(copyright =).*", f"\\1 '{copyright()}'",line)
-            line = re.sub(r"(author =).*", f"\\1 '{author()}'",line)
-            line = re.sub(r"(course_close_date =).*", f"\\1 '{course_close()}'", line)
-            line = re.sub(r"(language =).*", f"\\1 '{lang()}'",line)
-            if line.startswith("latex_elements") and latex_preamble:
-                while line and not re.match(r"\}", line):
-                    line = src.readline()
-                line = ("latex_elements = {\n"
-                        f"{latex_preamble},"
-                        "}\n")
-
-            trgt.write(line)
-            line = src.readline()
-
-if not os.path.exists("_static/course_orig.css"):
-    shutil.copyfile("_static/course.css", "_static/course_orig.css")
-
-print("Updating _static/course.css")
-
-shutil.copyfile("_static/course_orig.css", "_static/course.css")
-
-with open("_static/course.css", 'a') as coursecss:
-
-    coursecss.write("\n.hiddenhead\n{\n\tdisplay:none\n}\n")
-
-
-if not os.path.exists("_templates/layout_orig.html"):
-    shutil.copyfile("_templates/layout.html", "_templates/layout_orig.html")
-
-print("Updating _templates/layout.html")
-
-shutil.copyfile("_templates/layout_orig.html", "_templates/layout.html")
-
-with open("_templates/layout_orig.html", 'r') as src:
-
-    with open("_templates/layout.html", 'w') as trgt:
-
-        line = src.readline()
-
-        while line:
-
-            if line.startswith("{% endblock %}"):
-
-                trgt.write( "<link data-aplus rel=\"stylesheet\"\n"
-                            "href=\"{{ pathto('_static/contentui.css', 1) }}\"\n"
-                            "type=\"text/css\"\n"
-                            "/>\"\n\n")
-
-            elif line.startswith("<!-- Custom course styles -->"):
-
-                trgt.write( '<script data-aplus src="https://cdn.geogebra.org/apps/deployggb.js"></script>\n\n'
-                            "<script data-aplus type=\"text/javascript\"\n"
-                            "src=\"{{ pathto('_static/contentui.js', 1) }}\">\n"
-                            "</script>\n\n")
-
-            trgt.write(line)
-            line = src.readline()
-
-
-if publish:
-    if not os.path.exists("docker-compile_orig.sh"):
-        shutil.copyfile("docker-compile.sh", "docker-compile_orig.sh")
-        shutil.copymode("docker-compile.sh", "docker-compile_orig.sh")
-
-    print("Updating docker-compile.sh")
-
-    shutil.copyfile("docker-compile_orig.sh", "docker-compile.sh")
-    shutil.copymode("docker-compile_orig.sh", "docker-compile.sh")
-
-
-    with open("docker-compile_orig.sh", 'r') as src:
-
-        with open("docker-compile.sh", 'w') as trgt:
-
-            line = src.readline()
-
-            while line:
-
-                line = re.sub(r"(STATIC_CONTENT_HOST=).*\"","\\1..\"",line)
-
-                trgt.write(line)
-                line = src.readline()
+UPDATE_APLUS()
 
 print("\nCourse ready.")
 
