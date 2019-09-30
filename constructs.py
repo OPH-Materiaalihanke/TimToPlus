@@ -94,22 +94,21 @@ grade
 """
             )
 
-def GG_CONF(ex_name):
-    return ("""
-    <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
-    <script type="text/javascript">
-"""f'        document.getElementById("{ex_name}_id").style.display = "none";'"""
-      var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
-      var eventer = window[eventMethod];
-      var messageEvent = eventMethod === "attachEvent" ? "onmessage" : "message";
-      eventer(messageEvent, function (e) {
-        var data = (typeof e.data) === "string" ? e.data : "";
-"""f'        document.getElementById("{ex_name}_id").value = data;'"""
-      });
-    </script>
+def GG_CONF(ex_name, instructions, commands, params):
+    return ("""---
+"""f"title: {ex_name}""""
+max_points: 2
+instructions: |
+"""f"  <p> {instructions} </p>""""
+  <p>
+  <iframe """f'id="{ex_name}_frame"'""" src="_static/ggframe.html" onload="postMsg();" width="1000" height="600" frameborder="0"></iframe>
+  <script type="text/javascript">
+    function postMsg() {
+"""f'      document.getElementById("{ex_name}_id").style.display = "none";'"""
+    };
+    """f'{ex_name}_frame.contentWindow.postMessage({commands}+"´´´"+{params},'""" '*');
+  </script>
   </p>
-# acceptPost tuottaa tekstikentän sivulle
-# tiedoston palautuslomakkeen sijaan
 view_type: access.types.stdasync.acceptPost 
 fields: # näiden täytyy olla valideja HTML-formien attribuutteja
 """f'  - name: {ex_name}'"""
@@ -118,7 +117,7 @@ fields: # näiden täytyy olla valideja HTML-formien attribuutteja
 container:
   image: apluslms/grade-nodejs:11-2.7
   mount: exercises/geogebra-example
-"""f'  cmd: /exercise/run.sh {ex_name}_id'
+"""f'  cmd: /exercise/run.sh {ex_name}_frame.ggb-element'
             )
 
 def GG_TEST(test_script):
@@ -160,6 +159,68 @@ if (require.main === module) {
     return true;
 
 }""")
+
+def DEP_ggstatic():
+
+    with open("_static/ggframe.html", 'w') as trgt:
+        trgt.write("""<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name=viewport content="width=device-width,initial-scale=1">
+        <title> GeoGebra </title>
+    <script src = "https://cdn.geogebra.org/apps/deployggb.js"></script>
+    <script>
+
+    function parseData(data) {
+      var parts = data.split("´´´");
+      var cmd = parts[0];
+      var par="";
+      if (parts.length>1)
+        par = parts[1];
+      console.log(cmd, par);
+      return [cmd, par];
+    }
+
+    window.onmessage = function(e)
+    {
+      // cmd and par as global variables
+      console.log("onmessage: ", e.data);
+      
+      var ggbData = parseData(e.data);
+
+      console.log(ggbData);
+      cmd = ggbData[0];
+      par = ggbData[1];
+      
+      var params = {};
+
+
+      par["language"] = "fi";
+      par["width"] = window.innerWidth;
+      par["height"] = window.innerHeight;
+      par["appletOnLoad"] = initCommands;
+
+      initApplet(par);
+    };
+
+    function initCommands()
+    {
+      ggbApplet.evalCommand(cmd);
+    }
+
+    function initApplet(params)
+    {
+      var ggbApplet = new GGBApplet(params, true);
+      ggbApplet.inject('ggb-element');
+    }
+
+    </script>
+  </head>
+  <body>
+    <div id="ggb-element"></div>
+  </body>
+</html>""")
 
 
 def DEP_contentui():

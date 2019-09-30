@@ -237,12 +237,12 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
         par_script += f'"material_id" : {material_id}, '
 
     width = re.search('width:(.*)', lines)
-    if width:
-        par_script += f'"width":{width.group(1)}, '
+#    if width:
+ #       par_script += f'"width":{width.group(1)}, '
     height = re.search('height:(.*)', lines)
-    if height:
-        par_script += f'"height":{height.group(1)}, '
-    else:
+    if not height:
+#        par_script += f'"height":{height.group(1)}, '
+ #   else:
         height = re.match("(.*)","200")
 
 
@@ -272,11 +272,12 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
     commands = ""
     if found_commands:
         commands = found_commands.group(1)
-        commands = re.sub("\\n", " \\\\n ", commands)
-#        commands = f"\"{commands}\""
+        commands = re.sub(";\\n", " \\\\n ", commands)
+    #        commands = f"\"{commands}\""
         # commands config-yamlin cmd kohtaan
 
-    plug = (
+    if not test_script:
+        return (
         f'  <div id="ggbFrame_{ex_name}" style="height:{height.group(1)}">Tuo hiiri tähän ladataksesi Geagebra Appin<hr></div>\n'
         '  <script>\n'
         f'    var para = document.getElementById("ggbFrame_{ex_name}");\n'
@@ -289,10 +290,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
         f"      ggbApp.inject('ggbFrame_{ex_name}');\n"
         '    }\n'
         '  </script>\n'
-    )
-
-    if not test_script:
-        return plug
+        )
 
     os.makedirs(f"../exercises/{ex_name}", exist_ok=True)
 
@@ -311,13 +309,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
     # Mikäli stem kohtaa ei ole, poimittaneen kaikki teksti tähän edellisen "Tehtävä"otsikon alusta...
 
     with open(f"../exercises/{ex_name}/config.yaml", 'w') as trgt:
-        trgt.write( "---\n"
-                    f"title: {ex_name}\n"
-                    "max_points: 2\n"
-                    "instructions: |\n"
-                    f"  <p> {instructions} </p>\n"
-                    f"{plug}"
-                    f"{GG_CONF(ex_name)}")
+        trgt.write( GG_CONF(ex_name, instructions, commands, par_script))
 
 
     with open(f"../exercises/tests.js", 'w') as trgt:
@@ -727,7 +719,7 @@ The actual work begins
 os.chdir("CourseData")
 
 DEP_contentui()
-
+DEP_ggstatic()
 
 if update and os.path.exists("Source"):
     shutil.rmtree("Source")
