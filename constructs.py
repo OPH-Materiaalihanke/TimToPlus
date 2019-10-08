@@ -95,6 +95,7 @@ grade
             )
 
 def GG_CONF(ex_name, instructions, commands, params):
+    ex_name = ex_name.replace('-','_')
     return ("""---
 """f"title: {ex_name}""""
 max_points: 2
@@ -300,7 +301,7 @@ def DEP_contentui():
                 trgt.write(lineblock)
                 line = src.readline()
 
-def UPDATE_APLUS():
+def UPDATE_APLUS(publish = True):
 
     print("Updating conf.py")
     if not os.path.exists("conf_orig.py"):
@@ -313,7 +314,15 @@ def UPDATE_APLUS():
 
             line = src.readline()
 
+            extapp = False
+
             while line:
+
+                if line.startswith("sys.path.append"):
+                    extapp = True
+                elif extapp:
+                    line = "sys.path.append(os.path.abspath('extensions'))\n"+line
+                    extapp = False
 
                 line = re.sub(r"(extensions = \[)", f"\\1\n\t'sphinxcontrib.contentui',", line)
 
@@ -373,22 +382,26 @@ def UPDATE_APLUS():
                 trgt.write(line)
                 line = src.readline()
 
+
     if not os.path.exists("docker-compile_orig.sh"):
         shutil.copyfile("docker-compile.sh", "docker-compile_orig.sh")
         shutil.copymode("docker-compile.sh", "docker-compile_orig.sh")
 
-    print("Updating docker-compile.sh")
 
     shutil.copyfile("docker-compile_orig.sh", "docker-compile.sh")
     shutil.copymode("docker-compile_orig.sh", "docker-compile.sh")
 
-    with open("docker-compile_orig.sh", 'r') as src:
+    if publish:
 
-        with open("docker-compile.sh", 'w') as trgt:
-            line = src.readline()
+        print("Updating docker-compile.sh")
 
-            while line:
-                line = re.sub(r"(STATIC_CONTENT_HOST=).*\"", "\\1..\"", line)
+        with open("docker-compile_orig.sh", 'r') as src:
 
-                trgt.write(line)
+            with open("docker-compile.sh", 'w') as trgt:
                 line = src.readline()
+
+                while line:
+                    line = re.sub(r"(STATIC_CONTENT_HOST=).*\"", "\\1..\"", line)
+
+                    trgt.write(line)
+                    line = src.readline()

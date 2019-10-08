@@ -21,7 +21,7 @@ def copyright():
     return  f'2019, {author()}'
 
 def course_name():
-    return "MAA3 - Geogebra"
+    return "MAA3 - Algebra"
 
 
 # Content ids are the TIMs ids for the documents, and the name of the file. Insert them here in correct order

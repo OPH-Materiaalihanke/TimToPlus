@@ -42,7 +42,7 @@ publish = False # Wether to translate for local testing, or inputting to the int
 # single string. Remove the first two "words", until the first '-H'
 evaste = (
 #        r"ex:copytexthere"
-r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit/matematiikka/geometria' -H 'Cookie: session=.eJyNjksOwjAMRO-SdVHpD0o3HCVykkmJ2iRV6sICcXdSISGxY2HZ48_4PYVckDwFBBYDpw2FoKBvMYlBiEJo8pA2RZ9leXd4lExbydGtCAdaGTl5YiRHNDsuFxga4-jcNNFXhJ-l6267Jis5TgjZt6tM012MgSVY1EpXVJszOqVM317a6qRU21t7zHdzfilN1H_S7HWOD82I6MF5lNvU7BTbiiSdEUNftfXrDUXFXWE.XVpzRA.qXW6Mi0Sruj6aGpGz8Gw9OFUbxg; _ga=GA1.2.1762882191.1563259360; XSRF-TOKEN=IjUxZDM1OWRkZWZhZWZlMmJjMWEyZDdlNWJiZDg0OTQxNmJiNDhmZjAi.XVpzRA.gJU9M6fYiQkzxc5D2UkjIXhAWU8' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1' -H 'Cache-Control: max-age=0'"
+    r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit/matematiikka' -H 'Cookie: XSRF-TOKEN=ImZlZTU1ZjUyOGMwNjU0MGJhNDE1MjVkMDlmOGM4ZTMxODI4MjU1NDQi.XZw4lg.RQEc375SjKtwTqr-WDimtqkx_S0; session=.eJyljcEOwiAQRP-Fcw0tsgZ78VPIli5K2oJZtnow_rv0GzxMZuYwbz7KP4k3zJRFjcI7dQpzeBRWo1KdCriRj1y2VvUr0VsL7lpKqpRPWIWabSjECXFNoo_clNKyoMb1ThPj7eBUjl7KQrmBIhFABONCfwHbT2gHMDD31-iCo_PgjDMA1rbd2j78XMKf93sl9mlWoxus-f4ATQpTIQ.XZw4lg._vK5hfB15f7aIE360cAY3NcNS6Q' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1' -H 'Cache-Control: max-age=0'"
 )
 
 
@@ -1063,7 +1063,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
 os.chdir("..")
 
-UPDATE_APLUS()
+UPDATE_APLUS(publish)
 
 print("\nCourse ready.")
 
