@@ -101,13 +101,15 @@ max_points: 2
 instructions: |
 """f"  <p> {instructions} </p>""""
   <p>
-  <iframe """f'id="{ex_name}_frame"'""" src="_static/ggframe.html" onload="postMsg();" width="1000" height="600" frameborder="0"></iframe>
-  <script type="text/javascript">
-    function postMsg() {
-"""f'      document.getElementById("{ex_name}_id").style.display = "none";'"""
-    };
-    """f'{ex_name}_frame.contentWindow.postMessage({commands}+"´´´"+{params},'""" '*');
-  </script>
+    <iframe src="../_static/ggframe.html" """f'id="{ex_name}_frame"'""" onload="postMsg();" width="1000" height="600" frameborder="0"></iframe>
+    <script type="text/javascript">
+      function postMsg() {
+"""f'        document.getElementById("{ex_name}_id").style.display = "none";'"""
+      };
+"""f"      {ex_name}_frame.contentWindow.postMessage( '{commands}'\n"
+"            + '´´´'\n"
+f"            + '{params}' , " """ '*');
+    </script>
   </p>
 view_type: access.types.stdasync.acceptPost 
 fields: # näiden täytyy olla valideja HTML-formien attribuutteja

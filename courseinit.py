@@ -272,7 +272,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
     commands = ""
     if found_commands:
         commands = found_commands.group(1)
-        commands = re.sub(";\\n", " \\\\n ", commands)
+        commands = re.sub("\\n", " \\\\n ", commands)
     #        commands = f"\"{commands}\""
         # commands config-yamlin cmd kohtaan
 
