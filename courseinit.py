@@ -312,7 +312,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
         trgt.write( GG_CONF(ex_name, instructions, commands, par_script))
 
 
-    with open(f"../exercises/tests.js", 'w') as trgt:
+    with open(f"../exercises/{ex_name}/tests.js", 'w') as trgt:
         trgt.write(GG_TEST(test_script))
 
     plugin_lib[ex_name]=f".. submit:: geogebra_{ex_name} 1\n  :config: exercises/{ex_name}/config.yaml\n  \n"
@@ -587,21 +587,25 @@ def check_plugin(line,src):
     return line
 
 
+chapter_links = {}
+
 """Function for parsing the lines of TIMs markdown, and do neccessary modifications before pandocs translation"""
 def clean_line(line, src):
 
     global collapsing
+    global chapter_links
 
     if line.lstrip().rstrip().endswith(' \\'):  #Single backslashes at the end of line are overlooked in TIM,
                                                 #but confuse pandoc
         line = line.replace(' \\', '')
 
-    if re.search(r"\[.*?\]\(https://tim\.jyu\.fi/view", line): #link to other file in TIM,
+    if re.search(r"\[.*?\]\(https://tim\.jyu\.fi/view", line): #link to other file in TIM
         # we're not in TIM anymore, Toto
+        line = re.sub(view_folder+"/(.*?)\)", "LINK_INSERT(\1)", line)
 
-        #TODO sisöinen linkki osoittamaan tiedostoon
-        line = re.sub(f"{view_folder}(.*?)\)", r"..\1/\1.rst", line)
-#        line = re.sub(r"\)$", ")", line)
+    if re.search(r"\[.*?\]\(#", line): #anchor link to a heading in same md,
+                                       #may be split to different file
+        line = re.sub(r"(\[.*?\])\((#.*?)\)", "\1(LINK_INSERT("+chapter_links["currFile"]+"#\2))", line)
 
     line = check_image(line)
 
@@ -609,16 +613,18 @@ def clean_line(line, src):
 
     if line.startswith("#"):    # Markdowns heading, with possible options between { }
 
-        link = re.search(r"(#.*) {.*(#.*)[ }].*", line) # '#' is markdowns internal link, and should be conserved
+        anchor = re.search(r"(#.*) {.*(#.*)[ }].*", line) # '#' is markdowns anchor, and should be conserved
         admon = re.search(r"{.*\.huomautus.*", line)    # .huomautus class will be changed to admonition directive
         collapse = re.search(r"{.*area=\"(.*)\".*collapse=\"true\".*", line) # collapse means a hideable part,
         stop_collapse = re.search(r"{.*area_end=\"(.*)\".*", line)           # and will become a toggle-header
 
-        if link:
-            line = (f"{link.group(1)} "
+        if anchor:
+            line = (f"{anchor.group(1)} "
                         "{"
-                        f"{link.group(2)}"
+                        f"{anchor.group(2)}"
                         "}")
+            chapter_links[chapter_links["currFile"]+anchor.group(2)] = chapter_links["currChpt"]
+
         else:
             line = re.sub(r" {.*}", "", line)
 
@@ -661,6 +667,8 @@ def clean_line(line, src):
 
     return line
 
+def clean_name(line):
+    return line.replace("#", "").lstrip().rstrip().replace(" ", "_")
 
 """Function to translate the modded .md files to .rst files, and instert the plugins that were stored for
 protection"""
@@ -670,19 +678,45 @@ def md_to_rst(fileName):
 
     start = time.time()
 
-    newRSTName = fileName.replace("_mod.md", "_unmod.rst")
-    foldName = fileName.replace("_mod.md", "").rsplit("/", 1)[0]
-    rSTName = fileName.replace("_mod.md", ".rst")
-    print(f"pandoc '{fileName}'")
+    name = fileName.replace("_mod.md", "")
+    newRSTName = name + "_unmod.rst"
+    foldName = name.rsplit("/", 1)[0]
+    rSTName = name + ".rst"
+    mod2name = name + "_mod2.md"
+
+    print(f"parsing '{fileName}' for internal links")
+    with open(f"./{fileName}", 'r') as src:
+
+        with open(f"./{mod2name}", 'w') as trgt:
+
+            line = src.readline()
+
+            if re.search("LINK_INSERT", line):
+                lnk_name = re.search(r"LINK_INSERT\((.*)\)", line).group(1)
+                links = lnk_name.split("#")
+                if len(links) < 2:
+                    subline = f"../{links[1]}/{chapter_links[links[1]]}"
+                else:
+                    if links[1] == foldName:
+                        subline = chapter_links[links[1]]
+                    else:
+                        subline = f"../{links[1]}/{chapter_links[links[1]]}#{links[2]}"
+
+                line = re.sub("LINK_INSERT\(.*?\)", subline, line)
+
+            trgt.write(line)
+
+
+    print(f"pandoc '{name}'")
     os.system(
-        f"pandoc '{fileName}' -f markdown -t rst -o '{newRSTName}' --wrap=preserve --resource-path='{os.getcwd()}'")
+        f"pandoc '{mod2name}' -f markdown -t rst -o '{newRSTName}' --wrap=preserve --resource-path='{os.getcwd()}'")
     print(f"pandoc end {time.time()-start}")
 
     with open(f"./{newRSTName}", 'r') as src:
 
         os.makedirs(f"../{foldName}", exist_ok=True)
 
-        with open(f"../{rSTName}", 'w') as trgt:
+        with open(f"../{rSTName}", 'w+') as trgt:
 
             line = " "
             tabs = 0
@@ -694,6 +728,19 @@ def md_to_rst(fileName):
                 if re.match("PLUGIN_INSERT", line):
                     ex_name = re.search(r"PLUGIN_INSERT\((.*)\)", line).group(1)
                     line = plugin_lib.pop(ex_name)
+
+                if re.match("LINK_INSERT", line):
+                    lnk_name = re.search(r"LINK_INSERT\((.*)\)", line).group(1)
+                    links = lnk_name.split("#")
+                    if len(links) < 2:
+                        subline = f"../{links[1]}/{chapter_links[links[1]]}"
+                    else:
+                        if links[1] == foldName:
+                            subline = chapter_links[links[1]]
+                        else:
+                            subline = f"../{links[1]}/{chapter_links[links[1]]}#{links[2]}"
+
+                    line = re.sub("LINK_INSERT\(.*?\)", subline, line)
 
  #               line = re.sub("raw-latex", "math", line)
 
@@ -801,6 +848,8 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
     chapters = ""
     modulen = ""
 
+    chapterpaths = set()
+
     with open(f"{FileName}", 'r') as src:
 
         NamewoExt = FileName.replace(".md", "")
@@ -829,7 +878,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
             if line.startswith("# "):
                 modulen = re.sub("{.+}", "", line)
-                modulen = modulen.replace("#", "").lstrip().rstrip().replace(" ", "_")
+                modulen = clean_name(modulen)
                 modulen = re.sub("[/:.,]", "-", modulen)
                 break
 
@@ -844,7 +893,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
         while line:
 
             chapter = re.sub("{.+}", "", line)
-            chapter = chapter.replace("#","").lstrip().rstrip().replace(" ","_")
+            chapter = clean_name(chapter)
             chapter = re.sub("[/:.,]", "-", chapter)
 
             origchapter = chapter
@@ -852,13 +901,17 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
             while chapter in chapterdict:
                 number += 1
                 chapter = origchapter + f"_{number}"
-            chapterpath = f"{NamewoExt}/{chapter}"
+            chapterpath = f"{NamewoExt}/{chapter}_mod.md"
 
             chapterdict[chapter] = NamewoExt
+            chapter_links["currFile"] = NamewoExt
+            chapter_links["currChpt"] = chapter
+            if not NamewoExt in chapter_links:
+                chapter_links[NamewoExt] = f"{chapter}"
 
             chapters = f"{chapters}  {chapter}\n"
 
-            with open(f"{chapterpath}_mod.md", 'w') as trgt:
+            with open(f"{chapterpath}", 'w') as trgt:
 
                 headinglevel = len(re.match("(#+) ",line).group(1))
 
@@ -880,7 +933,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
                     line = clean_line(src.readline(), src)
 
-            md_to_rst(f"{chapterpath}_mod.md")
+            chapterpaths.add(chapterpath)
 
     for addFileName in add_ins:
 
@@ -977,7 +1030,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
                 if line.startswith("# "):
                     addmodulen = re.sub("{.+}", "", line)
-                    addmodulen = addmodulen.replace("#", "").lstrip().rstrip().replace(" ", "_")
+                    addmodulen = clean_name(addmodulen)
                     addmodulen = re.sub("[/:.,]", "-", addmodulen)
                     break
 
@@ -992,7 +1045,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
             while line:
 
                 chapter = re.sub("{.+}", "", line)
-                chapter = chapter.replace("#", "").lstrip().rstrip().replace(" ", "_")
+                chapter = clean_name(chapter)
                 chapter = re.sub("[/:.,]", "-", chapter)
 
                 origchapter = chapter
@@ -1002,13 +1055,17 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
                 while chapter in chapterdict:
                     number += 1
                     chapter = origchapter + f"_{number}"
-                chapterpath = f"{addNamewoExt}/{chapter}"
+                chapterpath = f"{addNamewoExt}/{chapter}_mod.md"
 
                 chapterdict[chapter] = addNamewoExt
+                chapter_links["currFile"] = addNamewoExt
+                chapter_links["currChpt"] = chapter
+                if not addNamewoExt in chapter_links:
+                    chapter_links[addNamewoExt] = f"{chapter}"
 
                 addchapters = f"{addchapters}  {chapter}\n"
 
-                with open(f"{chapterpath}_mod.md", 'w') as trgt:
+                with open(f"{chapterpath}", 'w') as trgt:
 
                     headinglevel = len(re.match("(#+) ",line).group(1))
 
@@ -1030,7 +1087,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
                         line = clean_line(src.readline(), src)
 
-                md_to_rst(f"{chapterpath}_mod.md")
+                chapterpaths.add(chapterpath)
 
         with open(f"../{addNamewoExt}/index.rst", 'w') as trgtindex:
 
@@ -1060,6 +1117,9 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
             f"{chapters}"
         )
 
+    for file in chapterpaths:
+
+        md_to_rst(file)
 
 os.chdir("..")
 

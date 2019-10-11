@@ -21,7 +21,7 @@ def copyright():
     return  f'2019, {author()}'
 
 def course_name():
-    return "MAA3 - Algebra"
+    return "MAA3 - Geometria"
 
 
 # Content ids are the TIMs ids for the documents, and the name of the file. Insert them here in correct order
@@ -54,4 +54,4 @@ def add_in_ids():
     ]
 
 # The main folder of the course, where the main site is situated, without last '/'
-view_folder = "https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit/matematiikka/algebra"
+view_folder = "https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit/matematiikka/geometria"

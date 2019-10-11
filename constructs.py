@@ -105,11 +105,10 @@ instructions: |
     <iframe src="../_static/ggframe.html" """f'id="{ex_name}_frame"'""" onload="postMsg();" width="1000" height="600" frameborder="0"></iframe>
     <script type="text/javascript">
       function postMsg() {
-"""f'        document.getElementById("{ex_name}_id").style.display = "none";'"""
-      };
-"""f"      {ex_name}_frame.contentWindow.postMessage( '{commands}'\n"
-"            + '´´´'\n"
-f"            + '{params}' , " """ '*');
+"""f'        var {ex_name}Frame = document.getElementById("{ex_name}_frame");'
+f"        {ex_name}Frame.contentWindow.postMessage( '{commands}' + '´´´' + '{params}' , '*');\n"
+f'        document.getElementById("{ex_name}_id").style.display = "none";\n'
+"""      };
     </script>
   </p>
 view_type: access.types.stdasync.acceptPost 
@@ -120,7 +119,7 @@ fields: # näiden täytyy olla valideja HTML-formien attribuutteja
 container:
   image: apluslms/grade-nodejs:11-2.7
   mount: exercises/geogebra-example
-"""f'  cmd: /exercise/run.sh {ex_name}_frame.ggb-element'
+"""f'  cmd: /exercise/run.sh ggb-element'
             )
 
 def GG_TEST(test_script):
@@ -196,20 +195,21 @@ def DEP_ggstatic():
       cmd = ggbData[0];
       par = ggbData[1];
       
-      var params = {};
+      var params = JSON.parse(par);
 
 
-      par["language"] = "fi";
-      par["width"] = window.innerWidth;
-      par["height"] = window.innerHeight;
-      par["appletOnLoad"] = initCommands;
+      params["language"] = "fi";
+      params["width"] = window.innerWidth;
+      params["height"] = window.innerHeight-10;
+      params["appletOnLoad"] = initCommands;
 
-      initApplet(par);
+      initApplet(params);
     };
 
     function initCommands()
     {
-      ggbApplet.evalCommand(cmd);
+      if(cmd)
+        ggbApplet.evalCommand(cmd);
     }
 
     function initApplet(params)
