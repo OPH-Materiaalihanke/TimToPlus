@@ -1,7 +1,7 @@
 A+ tiedostot täytyy ladata erikseen. Joko hae virallisislta sivuilta course-template ja kopioi sen sisältö 'CourseData' kansioon, tai lataa pelkistetty versio kurssitiedostoista komennoilla
 ~~~
 git submodule init
-git submodule update
+git submodule update --recursive
 ~~~
 
 Käyttö:
