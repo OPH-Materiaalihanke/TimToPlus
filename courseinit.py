@@ -208,7 +208,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
 
     params = re.findall(r"{% *set *([a-zA-Z]\w*) *= *(\w+) *%}$",lines, re.MULTILINE) # get all following parameters
     for p_name, param in params:
-        #find all cariable names and calculate them as neccessary
+        #find all variable names and calculate them as neccessary
         subs = re.sub(r"([a-zA-Z]\w*)\[(\d+)\]", lambda mtch: sets[mtch.group(1)][int(mtch.group(2))],param)
         subs = re.sub(r"([a-zA-Z]\w*)", lambda mtch: sets[mtch.group(1)],subs)
 
@@ -244,7 +244,7 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
 #        par_script += f'"height":{height.group(1)}, '
  #   else:
         height = re.match("(.*)","200")
-
+# TODO: Koon kanssa on jotain hämminkiä
 
     for scrpt in found_script:
         if scrpt.isspace():
@@ -266,17 +266,15 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
             par_script += f"\"{parnam}\" : {parval}, "
 
     par_script = par_script.rstrip(", ")
-    par_script += "}" # par_scirpt config-yamlin par kohtaan tai ggscriptille
+    par_script += "}"
 
     found_commands = re.search(r"commands: \|!!\n(.*?)\n!!", lines, re.DOTALL)
     commands = ""
     if found_commands:
         commands = found_commands.group(1)
         commands = re.sub("\\n", " \\\\n ", commands)
-    #        commands = f"\"{commands}\""
-        # commands config-yamlin cmd kohtaan
 
-    if not test_script:
+    if not test_script: # No need for yamls and containers, just an ordinary app
         return (
         f'  <div id="ggbFrame_{ex_name}" style="height:{height.group(1)}">Tuo hiiri tähän ladataksesi Geagebra Appin<hr></div>\n'
         '  <script>\n'
@@ -306,7 +304,6 @@ def create_geogebra(lines): # UNDER CONSTRUCTION
         instructions = ""
         for inst in instruct_list:
             instructions += f"  {inst}\n"
-    # Mikäli stem kohtaa ei ole, poimittaneen kaikki teksti tähän edellisen "Tehtävä"otsikon alusta...
 
     with open(f"../exercises/{ex_name}/config.yaml", 'w') as trgt:
         trgt.write( GG_CONF(ex_name, instructions, commands, par_script))
@@ -601,11 +598,11 @@ def clean_line(line, src):
 
     if re.search(r"\[.*?\]\(https://tim\.jyu\.fi/view", line): #link to other file in TIM
         # we're not in TIM anymore, Toto
-        line = re.sub(view_folder+"/(.*?)\)", "LINK_INSERT(\1)", line)
+        line = re.sub(view_folder+"/(.*)", r"LINK_INSERT(\1)", line)
 
     if re.search(r"\[.*?\]\(#", line): #anchor link to a heading in same md,
                                        #may be split to different file
-        line = re.sub(r"(\[.*?\])\((#.*?)\)", "\1(LINK_INSERT("+chapter_links["currFile"]+"#\2))", line)
+        line = re.sub(r"(\[.*?\])\((#.*?)\)", r"\1(LINK_INSERT("+chapter_links["currFile"]+r"#\2))", line)
 
     line = check_image(line)
 
@@ -689,22 +686,28 @@ def md_to_rst(fileName):
 
         with open(f"./{mod2name}", 'w') as trgt:
 
-            line = src.readline()
+            line = "BUG"
 
-            if re.search("LINK_INSERT", line):
-                lnk_name = re.search(r"LINK_INSERT\((.*)\)", line).group(1)
-                links = lnk_name.split("#")
-                if len(links) < 2:
-                    subline = f"../{links[1]}/{chapter_links[links[1]]}"
-                else:
-                    if links[1] == foldName:
-                        subline = chapter_links[links[1]]
+            while line:
+
+                line = src.readline()
+
+                if re.search("LINK_INSERT", line):
+                    lnk_name = re.search(r"LINK_INSERT\((.*?)\)", line).group(1)
+                    links = lnk_name.split("#")
+                    if not lnk_name:
+                        print("Empty link at " + line)
+                    elif len(links) < 2:
+                        subline = f"../{links[0]}/{chapter_links[links[0]]}"
                     else:
-                        subline = f"../{links[1]}/{chapter_links[links[1]]}#{links[2]}"
+                        if links[0] == foldName:
+                            subline = chapter_links[links[0]]
+                        else:
+                            subline = f"../{links[0]}/{chapter_links[links[0]]}#{links[1]}"
 
-                line = re.sub("LINK_INSERT\(.*?\)", subline, line)
+                    line = re.sub("LINK_INSERT\(.*?\)", subline, line)
 
-            trgt.write(line)
+                trgt.write(line)
 
 
     print(f"pandoc '{name}'")
@@ -718,7 +721,7 @@ def md_to_rst(fileName):
 
         with open(f"../{rSTName}", 'w+') as trgt:
 
-            line = " "
+            line = "BUG"
             tabs = 0
 
             while line:
@@ -733,12 +736,12 @@ def md_to_rst(fileName):
                     lnk_name = re.search(r"LINK_INSERT\((.*)\)", line).group(1)
                     links = lnk_name.split("#")
                     if len(links) < 2:
-                        subline = f"../{links[1]}/{chapter_links[links[1]]}"
+                        subline = f"../{links[1]}/{chapter_links[links[0]]}"
                     else:
                         if links[1] == foldName:
                             subline = chapter_links[links[1]]
                         else:
-                            subline = f"../{links[1]}/{chapter_links[links[1]]}#{links[2]}"
+                            subline = f"../{links[1]}/{chapter_links[links[0]]}#{links[1]}"
 
                     line = re.sub("LINK_INSERT\(.*?\)", subline, line)
 
@@ -841,14 +844,12 @@ if len(txtDirEntries) == 0:
 print("Modifying files. Pandoc may work slowly for big files, so this might take some time")
 
 chapterdict = dict()
-
+chapterpaths = set()
 
 for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
     chapters = ""
     modulen = ""
-
-    chapterpaths = set()
 
     with open(f"{FileName}", 'r') as src:
 
@@ -904,10 +905,11 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
             chapterpath = f"{NamewoExt}/{chapter}_mod.md"
 
             chapterdict[chapter] = NamewoExt
-            chapter_links["currFile"] = NamewoExt
-            chapter_links["currChpt"] = chapter
             if not NamewoExt in chapter_links:
                 chapter_links[NamewoExt] = f"{chapter}"
+            chapter_links["currFile"] = NamewoExt
+            chapter_links["currChpt"] = chapter
+
 
             chapters = f"{chapters}  {chapter}\n"
 
@@ -1117,9 +1119,9 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
             f"{chapters}"
         )
 
-    for file in chapterpaths:
+for file in chapterpaths:
 
-        md_to_rst(file)
+    md_to_rst(file)
 
 os.chdir("..")
 
