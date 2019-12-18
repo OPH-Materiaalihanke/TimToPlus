@@ -30,9 +30,9 @@ import time
 """
 Check these before running
 """
-update = False  # Download all files even if they already exists
+update = True  # Download all files even if they already exists
 
-publish = False # Wether to translate for local testing, or inputting to the intterwebs. Doesn't really do much,
+publish = True # Wether to translate for local testing, or inputting to the intterwebs. Doesn't really do much,
                 # maybe just check the end of file for manually changing few lines instead of full rerun.
 
 
@@ -42,7 +42,7 @@ publish = False # Wether to translate for local testing, or inputting to the int
 # single string. Remove the first two "words", until the first '-H'
 evaste = (
 #        r"ex:copytexthere"
-    r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/view/tau/toisen-asteen-materiaalit/matematiikka' -H 'Cookie: XSRF-TOKEN=ImZlZTU1ZjUyOGMwNjU0MGJhNDE1MjVkMDlmOGM4ZTMxODI4MjU1NDQi.XZw4lg.RQEc375SjKtwTqr-WDimtqkx_S0; session=.eJyljcEOwiAQRP-Fcw0tsgZ78VPIli5K2oJZtnow_rv0GzxMZuYwbz7KP4k3zJRFjcI7dQpzeBRWo1KdCriRj1y2VvUr0VsL7lpKqpRPWIWabSjECXFNoo_clNKyoMb1ThPj7eBUjl7KQrmBIhFABONCfwHbT2gHMDD31-iCo_PgjDMA1rbd2j78XMKf93sl9mlWoxus-f4ATQpTIQ.XZw4lg._vK5hfB15f7aIE360cAY3NcNS6Q' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1' -H 'Cache-Control: max-age=0'"
+    r"-H 'Host: tim.jyu.fi' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://tim.jyu.fi/manage/tau/toisen-asteen-materiaalit/pedagogiikka/pedagoginen-materiaali' -H 'Cookie: XSRF-TOKEN=Ijg0OTU2OWJhMWYyMjYyMjJjMGM5MzJiZDQ3ODYwNDRhMjJlMzk2YTci.XfoO6A.lranC2wk3BsIcLcVu8p2yuLmkhY; session=.eJytjk0OwiAQhe_CuoZ2irR041HIFKaVVKABqgvj3cWNiXtXL1_y_p5M75Q8BgqFTSUd1DAM5hoTmxhrmEFPeknRV-R3Rw9e8OAlukzhhLlQFY-FkkO8ucJ3srjG1bltwy-EH9PlU5vTokvcKNTeUaizVDN2C4AEANMa1cNsxTDKVggEoF5JHGruVie1jea_b45MSTvLprET8HoDTZ1etw.XfoO6A.6hPcFb5AeOeHhxKDyEA1BvtmhmY' -H 'DNT: 1' -H 'Connection: keep-alive' -H 'Upgrade-Insecure-Requests: 1' -H 'Cache-Control: max-age=0'"
 )
 
 
@@ -684,7 +684,7 @@ def md_to_rst(fileName):
     print(f"parsing '{fileName}' for internal links")
     with open(f"./{fileName}", 'r') as src:
 
-        with open(f"./{mod2name}", 'w') as trgt:
+        with open(f"./{mod2name}", 'w+') as trgt:
 
             line = "BUG"
 
@@ -784,7 +784,7 @@ if not os.path.exists("Source"):
 txtDirEntries = []
 addtxtDirEntries = []
 
-with open("./index.rst", 'w') as trgt:
+with open("./index.rst", 'w+') as trgt:
     trgt.write( f"{course_name()}\n"
                 f"{'='*len(course_name())}\n"
                 "\n"
@@ -811,7 +811,7 @@ with open("./index.rst", 'w') as trgt:
                           f"{evaste} -o './{filename}'")
                 with open(filename) as check:
                     if check.readline().startswith("<!DOCTYPE html>"):
-                        raise RuntimeError("Download denied. Have you updated the eväste in courseinfo?")
+                        raise RuntimeError("Download denied. Have you updated the eväste?")
         else:
             print(f"{con_nm} file exist, no need to download")
 
@@ -1070,7 +1070,10 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
                 addchapters = f"{addchapters}  {chapter}\n"
 
-                with open(f"{chapterpath}", 'w') as trgt:
+
+
+
+                with open(f"{chapterpath}", 'w+') as trgt:
 
                     headinglevel = len(re.match("(#+) ",line).group(1))
 
@@ -1080,7 +1083,7 @@ for FileName, add_ins in zip(txtDirEntries, addtxtDirEntries):
 
                     while line and not re.match("#{1,2} ",line):
 
-                        if re.match("#+",line):
+                        if re.match("#+ ",line):
                             newheadinglevel = len(re.match("(#+) ",line).group(1))
                             while newheadinglevel > headinglevel+1:
                                 trgt.write(f"\n\n{'#'*(headinglevel+1)}" " THIS SHOULD BE HIDDEN! \n:::+:hiddenhead:}\n:::-\n")
