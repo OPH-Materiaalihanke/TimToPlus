@@ -697,7 +697,10 @@ def md_to_rst(fileName):
                     links = lnk_name.split("#")
                     if not lnk_name:
                         print("Empty link at " + line)
+                    elif not links[0] in chapter_links.keys():
+                        subline = "N/A"
                     elif len(links) < 2:
+                        print("     N/A link: " + line)
                         subline = f"../{links[0]}/{chapter_links[links[0]]}"
                     else:
                         if links[0] == foldName:
